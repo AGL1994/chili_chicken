@@ -1,4 +1,4 @@
-# chili_chicken
+# chili_chicken(开发中...)
 主要使用sanic、 peewee开发的博客系统
 ## 主要技术
 1. sanic，文档：https://sanic.readthedocs.io/en/latest/
