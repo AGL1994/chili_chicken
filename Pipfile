@@ -9,6 +9,7 @@ verify_ssl = true
 sanic = "*"
 aiomysql = "*"
 peewee-async = "*"
+aiohttp = "*"
 
 [requires]
 python_version = "3.6"
