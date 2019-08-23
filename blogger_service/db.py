@@ -6,7 +6,6 @@ from playhouse.shortcuts import model_to_dict
 from blogger_service.config import Config
 
 database = Config().get_db_config()
-print(database)
 
 db_name = database.pop('db_name')
 blog_db = peewee_async.PooledMySQLDatabase(db_name, **database)

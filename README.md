@@ -1,56 +1,141 @@
-# chili_chicken(开发中...)
-主要使用sanic、 peewee开发的博客系统
+# chili_chicken(基于sanic开发的异步微服务框架)
 ## 主要技术
 1. sanic，文档：https://sanic.readthedocs.io/en/latest/
 2. （可以替换成自己熟悉ORM框架的异步版本）peewee，官方文档：http://docs.peewee-orm.com/en/latest/
 3. peewee-sync 官方文档：https://peewee-async.readthedocs.io/en/latest/
-## 项目目录结构
-│── models　　　　　　　　　// peewee models存放路径，定义了所有的数据库模型 \
+4. aiohttp 调用其他服务
+## 项目目录结构(待完善)
+│── blogger_service　　　　　　　　　// 各个微服务  xxx_service \
 │　│──  __init__.py                                  \
-│　│──  base.py　　　　　　// 公共的model \
-│　│──  model1.py　　　　　// 其他业务相关model \
-│　│──  model2.py　　　　　// 其他业务相关model \
-│── views　　　　　　　　　// 项目视图函数文件夹 \
+│　│──  interface　　　　　　// 调用其他微服务的接口 \
+│　│  │── __init__.py      // 注册所有接口  \
+│　│  │── article.py      // 接口文件
+│　│──  models　　　　　// 其他业务相关models \
+│　│──  views.py　　　　　// 视图文件 \
+│── chili　　　　　　　　　// 服务核心模块，包含了需要的各个组件 \
 │　│──  __init__.py                                  \
-│　│──  view.py　　　　　　// 视图函数文件 \
-│── db.py　　　　　　　　　// 数据库配置文件 \
+│　│──  error.py　　　　　　// 相关异常 \
+│　│──  gateway.py　　　　　　// 接口相关模块 \
+│── config_center　　　　　　　　// 配置中心 \
 │── server　　　　　　　　　// 项目启动文件 \
 │── Pipfile　　　　　　　　　// pipenv文件 \
 │── Pipfile.lock　　　　　　　// pipenv文件
 
-## 项目启动
-1. 安装依赖请自行搜索Pipenv使用方式，使用pip安装也可以使用项目中的requirement.txt进行安装。
+### 各个服务  xxx_service
+#### 启动方法
+运行 xxx_service/server.py
+#### 数据库文件说明 xxx_service/db.py
 ```cython
-# 以下列出不同数据库安装的驱动，据官方目前只支持这两种数据库的异步
-# 具体参考官方文档：https://peewee-async.readthedocs.io/en/latest/index.html?highlight=aiomysql#install
-# PostgreSQL: pip install aiopg
-# MySQL: pip install aiomysql
-```
-2. 启动代码：
-```cython
-# 数据库配置  db.py
-# 数据库使用的是MySQL
+from blogger_service import config  # 详细见下config.py说明
 import peewee_async
-db = {
-    'user': 'root',  # 用户名
-    'host': '192.168.88.157',  # 数据库地址
-    'password': '123456',  # 密码
-    'port': 3306,  # 端口
-    'max_connections': 10,  # 最大链接数
-    'charset': 'utf8mb4',  # 字符集
-}
-# PooledMySQLDatabase使用链接池，
-blog_db = peewee_async.PooledMySQLDatabase('db_name', **db)  # 数据库名
+
+database = config.Config().get_db_config()  # 从配置中心获取数据库配置
+
+# 注册数据库
+db_name = database.pop('db_name')
+blog_db = peewee_async.PooledMySQLDatabase(db_name, **database)
 objects = peewee_async.Manager(blog_db)
-
-# 启动项目 server.py
-from sanic import Sanic
-from views.article import bp as article_bp  # 需要注册的view
-
-app = Sanic()
-app.blueprint(article_bp)  # 注册蓝图
-
-# 运行即可
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8000)
 ```
+#### 配置文件说明 xxx_service/config.py
+```cython
+import threading
+
+from blogger_service import SERVICE_NAME
+from chili import gateway  # 详见 chili/gateway.py说明
+
+
+class Config(gateway.BaseConfig):
+
+    def __init__(self):
+        super().__init__(SERVICE_NAME)
+
+    def get_db_config(self):
+        """ 获取数据库配置 """
+        return self._get_config('DATABASE')
+    
+    def get_config_name(self):
+        """ 需要什么配置文件就写什么方法 """
+        return self._get_config('CONFIG_NAME')
+    
+    _instance_lock = threading.Lock()
+
+    def __new__(cls, *args, **kwargs):
+        if not hasattr(Config, "_instance"):
+            with Config._instance_lock:
+                if not hasattr(Config, "_instance"):
+                    Config._instance = object.__new__(cls)
+        return Config._instance
+```
+#### 调用其他服务  
+article_service/interface/*.py
+```cython
+from chili.gateway import ServiceClient, service_client  # 详见 chili/gateway.py说明
+
+
+class ArticleClient(ServiceClient):
+
+    @service_client('service_name', 'function_name', method='post')  # 需调用的服务名、接口名、method
+    async def get_blogger_list(self, json=None):  # json需要传json数据
+        """ 获取所有博客用户 """
+        pass
+```
+实际调用 article_service/views/*.py
+```cython
+from sanic import Blueprint
+from sanic.response import json
+
+from article_service import interface
+
+bp = Blueprint(__name__)
+article_interface = interface.ArticleClient()  # 需调用的服务接口（上一步定义的方法）
+
+
+@bp.route('/article')
+async def test(request):
+    json_params = {'f': 'ff'}
+    result = await article_interface.get_blogger_list(json=json_params)  # 调用相关服务方法
+    print(result)
+    return json({'data': result['result']})
+```
+
+
+### 配置中心 config_center
+#### 启动方法
+运行 config_center/server.py
+#### config.py说明
+```cython
+CONFIG_NAME = {
+    '服务名': {
+        'user': '数据库用户',  # must
+        'host': '数据库地址',  # must
+        'password': '数据库密码',  # must
+        'port': '数据库端口',  # must
+        'max_connections': '数据库最大连接数',  # not must
+        'charset': '字符编码',  # must
+        'db_name': '数据库名'  # must
+    }
+}
+# 例如
+# 数据库配置
+DATABASE = {
+    'blogger': {
+        'user': 'root',
+        'host': '192.168.88.157',
+        'password': '123456',
+        'port': 3306,
+        'max_connections': 10,
+        'charset': 'utf8mb4',
+        'db_name': 'chili_chicken'
+    },
+    'article': {
+        'user': 'root',
+        'host': '192.168.88.157',
+        'password': '123456',
+        'port': 3306,
+        'max_connections': 10,
+        'charset': 'utf8mb4',
+        'db_name': 'chili_chicken'
+    },
+}
+```
+### 下一步 服务注册于发现

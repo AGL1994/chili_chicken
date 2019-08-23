@@ -1,35 +1,16 @@
 import asyncio
+import threading
+
 import aiohttp
 import requests
 
 from chili import error
 
 
-async def get(url, params=None):
-    """ 异步get """
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, params=params) as response:
-            return await response_result(response)
-
-
-async def post(url, params=None, json=None):
+async def do_request(url, method='get', params=None, json=None):
     """ 异步post """
     async with aiohttp.ClientSession() as session:
-        async with session.post(url, params=params, json=json) as response:
-            return await response_result(response)
-
-
-async def put(url, params=None, json=None):
-    """ 异步put """
-    async with aiohttp.ClientSession() as session:
-        async with session.put(url, params=params, json=json) as response:
-            return await response_result(response)
-
-
-async def delete(url, params=None, json=None):
-    """ 异步delete """
-    async with aiohttp.ClientSession() as session:
-        async with session.delete(url, params=params, json=json) as response:
+        async with getattr(session, method)(url, params=params, json=json) as response:
             return await response_result(response)
 
 
@@ -67,21 +48,22 @@ class ServiceClient:
             uri, path = await get_service_function(service_name, function_name)
             params = kwargs.get('params', None)
             json = kwargs.get('json', None)
-            return await post(uri + path, params=params, json=json)
+            return await do_request(uri + path, method=method, params=params, json=json)
         else:
             raise error.GatewayMethodNotFoundError(f'请求方法不存在，期望方法：{method}，允许方法：{self.methods}')
 
 
-def service_client(service_name, function_name):
+def service_client(service_name, function_name, method=None):
     """
     调用服务装饰器
+    :param method: 请求方法
     :param service_name: 服务名称
     :param function_name: 服务下的接口名称
     :return: {'status': '服务返回状态', 'result': '服务返回结果'}
     """
     def __service(function):
         async def service_client_handler(obj, *args, **kwargs):
-            return await obj.transfer_service(service_name, function_name, *args, **kwargs)
+            return await obj.transfer_service(service_name, function_name, *args, method=method, **kwargs)
         return service_client_handler
     return __service
 
@@ -98,4 +80,14 @@ class BaseConfig:
             return config
         else:
             raise error.ConfigNameNotFoundError(f'配置{name}找不到')
+
+    _instance_lock = threading.Lock()
+
+    def __new__(cls, *args, **kwargs):
+        if not hasattr(BaseConfig, "_instance"):
+            with BaseConfig._instance_lock:
+                if not hasattr(BaseConfig, "_instance"):
+                    BaseConfig._instance = object.__new__(cls)
+        return BaseConfig._instance
+
 
