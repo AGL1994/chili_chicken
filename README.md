@@ -1,8 +1,8 @@
 # chili_chicken(基于sanic开发的异步微服务框架)
 ### 说明
 持续开发中，前期主要自己开发组件，后期会集成现有第三方组件（比如：Consul、Eureka、zk、Kafka等等） \
-由于主要框架是现学现卖，对微服务的理解并不深入，有什么错误或者不当的地方望大佬指出。
-项目未进过测试，仅供学习使用 \
+由于主要框架是现学现卖，对微服务的理解并不深入，有什么错误或者不当的地方望大佬指出。\
+项目未进过测试，仅供学习使用 
 ### 主要技术
 1. sanic，文档：https://sanic.readthedocs.io/en/latest/
 2. （可以替换成自己熟悉ORM框架的异步版本）peewee，官方文档：http://docs.peewee-orm.com/en/latest/
