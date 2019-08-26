@@ -11,6 +11,5 @@ article_interface = interface.ArticleClient()
 async def test(request):
     json_params = {'f': 'ff'}
     result = await article_interface.get_blogger_list(json=json_params)
-    print(result)
     return json({'data': result['result']})
 

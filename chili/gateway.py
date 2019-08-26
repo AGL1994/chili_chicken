@@ -90,4 +90,8 @@ class BaseConfig:
                     BaseConfig._instance = object.__new__(cls)
         return BaseConfig._instance
 
+    def get_db_config(self):
+        """ 获取数据库配置 """
+        return self._get_config('DATABASE')
+
 

@@ -3,9 +3,10 @@ from collections import Iterable
 import peewee_async
 from playhouse.shortcuts import model_to_dict
 
-from blogger_service.config import Config
+from blogger_service import SERVICE_NAME
+from chili.gateway import BaseConfig
 
-database = Config().get_db_config()
+database = BaseConfig(SERVICE_NAME).get_db_config()
 
 db_name = database.pop('db_name')
 blog_db = peewee_async.PooledMySQLDatabase(db_name, **database)

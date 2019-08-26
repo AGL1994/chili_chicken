@@ -10,6 +10,7 @@ sanic = "*"
 aiomysql = "*"
 peewee-async = "*"
 aiohttp = "*"
+python-consul = "*"
 
 [requires]
 python_version = "3.6"

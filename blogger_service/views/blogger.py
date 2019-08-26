@@ -1,12 +1,12 @@
 
-from sanic import Blueprint
+# from sanic import Blueprint
 from sanic.response import json
 
 from blogger_service.db import objects, models_to_dict
 from blogger_service import models
+from chili.recover import RBlueprint
 
-bp = Blueprint(__name__)
-
+bp = RBlueprint(__name__)
 
 @bp.post('/blogger')
 async def get_blogger(request):
